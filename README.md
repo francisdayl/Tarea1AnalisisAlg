@@ -1,8 +1,14 @@
 # Tarea1AnalisisAlg
-Tarea en la que se muestra el rendimiento iterativo y recursivo para al sactar el factorial de los números
+Tarea (Hecha en Python) en la que se muestra el rendimiento iterativo y recursivo al obtener el factorial de números.
 
 Resultado
 -
 
-![Funcionamiento](/Capturas/Resultado.png)
+![Resultado](/Capturas/Resultado.png)
+
+
+Funcionamiento
+-
+
+![Funcionamiento](/Capturas/Funcionamiento.gif)
  
