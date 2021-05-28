@@ -9,17 +9,26 @@
 
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
-import numpy as np
+from numpy import array
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import funciones as fc
 
+class Worker(QtCore.QObject):
+    finished = QtCore.pyqtSignal(list)
+    progress = QtCore.pyqtSignal()
+
+    def run(self,valor):
+        self.progress.emit()
+        x_iter, y_iter = fc.time_iterative(valor)
+        x_rec, y_rec = fc.time_recursive(valor)
+        self.finished.emit([x_iter, y_iter,x_rec, y_rec])
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(900, 500)
-        MainWindow.setMinimumSize(QtCore.QSize(900, 500))
+        MainWindow.resize(600, 500)
+        MainWindow.setMinimumSize(QtCore.QSize(600, 500))
         MainWindow.setMaximumSize(QtCore.QSize(1000, 850))
         MainWindow.setStyleSheet("background-color:rgb(28, 43, 52) ;\n"
 "color: white;")
@@ -37,20 +46,17 @@ class Ui_MainWindow(object):
         self.Label_Selec.setFont(font)
         self.Label_Selec.setObjectName("Label_Selec")
         self.HBox_TOP.addWidget(self.Label_Selec)
-        self.spinBox = QtWidgets.QSpinBox(self.centralwidget)
+        self.Combo = QtWidgets.QComboBox(self.centralwidget)
         font = QtGui.QFont()
         font.setPointSize(22)
         font.setBold(False)
         font.setWeight(50)
-        self.spinBox.setFont(font)
-        self.spinBox.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
-        self.spinBox.setStyleSheet("background-color: white;\n"
+        self.Combo.setFont(font)
+        self.Combo.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+        self.Combo.setStyleSheet("background-color: white;\n"
 "color: black;")
-        self.spinBox.setMinimum(200)
-        self.spinBox.setMaximum(900)
-        self.spinBox.setSingleStep(100)
-        self.spinBox.setObjectName("spinBox")
-        self.HBox_TOP.addWidget(self.spinBox)
+        self.Combo.addItems(["1","2","5","8","10","12","15","20","25","30","35","40"])
+        self.HBox_TOP.addWidget(self.Combo)
         spacerItem1 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.HBox_TOP.addItem(spacerItem1)
         self.gridLayout.addLayout(self.HBox_TOP, 0, 0, 1, 1)
@@ -67,15 +73,6 @@ class Ui_MainWindow(object):
         self.Label_GraphRec.setAlignment(QtCore.Qt.AlignCenter)
         self.Label_GraphRec.setObjectName("Label_GraphRec")
         self.HBox_Med.addWidget(self.Label_GraphRec)
-        self.Label_GraphIter = QtWidgets.QLabel(self.centralwidget)
-        font = QtGui.QFont()
-        font.setPointSize(11)
-        font.setBold(True)
-        font.setWeight(75)
-        self.Label_GraphIter.setFont(font)
-        self.Label_GraphIter.setAlignment(QtCore.Qt.AlignCenter)
-        self.Label_GraphIter.setObjectName("Label_GraphIter")
-        self.HBox_Med.addWidget(self.Label_GraphIter)
         self.gridLayout.addLayout(self.HBox_Med, 1, 0, 1, 1)
 
 
@@ -87,13 +84,9 @@ class Ui_MainWindow(object):
         self.Frame_Rec.setFrameShadow(QtWidgets.QFrame.Raised)
         self.Frame_Rec.setObjectName("Frame_Rec")
         self.HBox_Bot.addWidget(self.Frame_Rec)
-        self.Frame_Iter = QtWidgets.QFrame(self.centralwidget)
-        self.Frame_Iter.setStyleSheet("background-color: rgb(204, 204, 204);")
-        self.Frame_Iter.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        self.Frame_Iter.setFrameShadow(QtWidgets.QFrame.Raised)
-        self.Frame_Iter.setObjectName("Frame_Iter")
-        self.HBox_Bot.addWidget(self.Frame_Iter)
         self.gridLayout.addLayout(self.HBox_Bot, 2, 0, 1, 1)
+
+        
 
 
         self.HBox_Last = QtWidgets.QHBoxLayout()
@@ -113,10 +106,11 @@ class Ui_MainWindow(object):
         self.Label_Iter.setAlignment(QtCore.Qt.AlignCenter)
         self.Label_Iter.setObjectName("Label_Iter")
         #self.Label_Iter.setText("a")
-        self.HBox_Last.addWidget(self.Label_Iter)
-        self.gridLayout.addLayout(self.HBox_Last, 3, 0, 1, 1)
+        #self.HBox_Last.addWidget(self.Label_Iter)
+        self.gridLayout.addWidget(self.Label_Rec, 3, 0, 1, 1)
 
 
+        self.gridLayout.addWidget(self.Label_Iter, 4, 0, 1, 1)
 
         self.gridLayout.setRowStretch(0,1)
         self.gridLayout.setRowStretch(1,1)
@@ -129,39 +123,58 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
-        self.spinBox.valueChanged.connect(self.graficar)       
+        self.Combo.activated.connect(self.graficar)     
+
+
+    
+    def runLongTask(self,valor):
+        self.thread = QtCore.QThread()
+        self.worker = Worker()
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(lambda: self.worker.run(valor))
+        self.worker.finished.connect(self.show_fin)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.thread.start()
+
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "Tarea - Recursividad vs Iteratividad"))
         self.Label_Selec.setText(_translate("MainWindow", "Seleccione un número"))
-        self.Label_GraphRec.setText(_translate("MainWindow", "Gráfico de Recursividad"))
-        self.Label_GraphIter.setText(_translate("MainWindow", "Gráfico de Iteratividad"))
-    
-    def graficar(self):
+        self.Label_GraphRec.setText(_translate("MainWindow", "Gráfico de Recursividad (Azul) vs Iteratividad (Naranja)"))
+        #self.Label_GraphIter.setText(_translate("MainWindow", "Gráfico de Iteratividad"))
+
+
+    def show_fin(self,datos):
         self.clear_HBoxBot()
-        x_rec, y_rec = fc.time_recursive(self.spinBox.value()//100)
-        x_iter, y_iter = fc.time_iterative(self.spinBox.value()//100)     
-
-        #Grafico Recursivo
+        x_iter, y_iter,x_rec, y_rec = datos
         fig, ax = plt.subplots(figsize=(1, 1), dpi=70)
-
         ax.plot(x_rec, y_rec)
-        ax.set(xlabel='Número (n)', ylabel='Tiempo (ms)')
+        ax.plot(x_iter, y_iter)
+        ax.set(xlabel='Número (n)', ylabel='Tiempo (s)')
         ax.grid()
         self.HBox_Bot.addWidget(FigureCanvas(fig))
-        self.Label_Rec.setText("Tiempo en (ms) "+"|".join(np.array(y_rec,dtype=str).tolist()))
+        self.Label_Rec.setText("Tiempo en (s) Recursividad: "+"|".join(array(y_rec,dtype=str).tolist()))
+        self.Label_Iter.setText("Tiempo en (s) Iteratividad: "+"|".join(array(y_iter,dtype=str).tolist()))
         
-        #Grafico Iterativo
-        fig2, ax2 = plt.subplots(figsize=(1, 1), dpi=70)
 
-        ax2.plot(x_iter, y_iter)
-        ax2.set(xlabel='Número (n)', ylabel='Tiempo (ms)')
-        ax2.grid()
-        self.HBox_Bot.addWidget(FigureCanvas(fig2))
-        self.Label_Iter.setText("Tiempo en (ms) "+"|".join(np.array(y_iter,dtype=str).tolist()))
-
-
+    def graficar(self):
+        self.clear_HBoxBot()
+        valor = int(self.Combo.currentText())
+        self.Label_Carga = QtWidgets.QLabel(self.centralwidget)
+        font = QtGui.QFont()
+        font.setPointSize(46)
+        font.setBold(True)
+        font.setWeight(75)
+        self.Label_Carga.setFont(font)
+        self.Label_Carga.setAlignment(QtCore.Qt.AlignCenter)
+        self.Label_Carga.setObjectName("Label_Carga")
+        self.Label_Carga.setText("CARGANDO...")
+        self.HBox_Bot.addWidget(self.Label_Carga)
+        self.runLongTask(valor)
+        
         pass
 
     def clear_HBoxBot(self):
@@ -170,7 +183,8 @@ class Ui_MainWindow(object):
             if child.widget():
                     child.widget().deleteLater()
         return None
-
+    
+        
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
